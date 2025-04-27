@@ -30,6 +30,9 @@ namespace freelanceNew.Models
             modelBuilder.Entity<FreelancerSkill>()
                 .HasKey(fs => new { fs.FreelancerId, fs.SkillId });
 
+            modelBuilder.Entity<ClientProfile>()
+                .HasKey(cp => cp.ClientId);
+
             // Configure one-to-one relationship between User and FreelancerProfile
             modelBuilder.Entity<User>()
                 .HasOne(u => u.FreelancerProfile)
