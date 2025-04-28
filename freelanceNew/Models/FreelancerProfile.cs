@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.Contracts;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.Contracts;
 
 namespace freelanceNew.Models
 {

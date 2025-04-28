@@ -45,6 +45,9 @@ namespace freelanceNew.Models
                 .WithOne(cp => cp.User)
                 .HasForeignKey<ClientProfile>(cp => cp.ClientId);
 
+            modelBuilder.Entity<FreelancerProfile>()
+                .HasKey(fp => fp.FreelancerId); // Указываем, что это первичный ключ
+
             // Configure relationships for Message
             modelBuilder.Entity<Message>()
                 .HasOne(m => m.Sender)
