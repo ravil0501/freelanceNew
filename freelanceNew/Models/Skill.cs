@@ -1,7 +1,10 @@
-﻿namespace freelanceNew.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace freelanceNew.Models
 {
     public class Skill
     {
+        [Key]
         public Guid SkillId { get; set; } // Primary Key
         public string Name { get; set; }
 

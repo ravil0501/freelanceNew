@@ -1,13 +1,18 @@
 ﻿using freelanceNew.Models.Enums;
+using System.ComponentModel.DataAnnotations;
 
 
 namespace freelanceNew.Models
 {
     public class Contract
     {
+        [Key]
         public Guid ContractId { get; set; } // Primary Key
+        [Required]
         public Guid JobId { get; set; } // Foreign Key to Job
+        [Required]
         public Guid FreelancerId { get; set; } // Foreign Key to FreelancerProfile
+        [Required]
         public Guid ClientId { get; set; } // Foreign Key to ClientProfile
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }

@@ -1,9 +1,11 @@
-﻿using System.Diagnostics.Contracts;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.Contracts;
 
 namespace freelanceNew.Models
 {
     public class ClientProfile
     {
+        [Key]
         public Guid ClientId { get; set; } // Primary Key and Foreign Key to User
         public string CompanyName { get; set; }
         public string Website { get; set; }

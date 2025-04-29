@@ -5,8 +5,11 @@ namespace freelanceNew.Models
 {
     public class FreelancerProfile
     {
+        [Key]
         public Guid FreelancerId { get; set; } // Primary Key and Foreign Key to User
+        [Required, MaxLength(200)]
         public string FullName { get; set; }
+        [MaxLength(1000)]
         public string Bio { get; set; }
         public string PortfolioUrl { get; set; }
         public decimal HourlyRate { get; set; }
