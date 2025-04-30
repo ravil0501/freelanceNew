@@ -1,3 +1,4 @@
+using freelanceNew;
 using freelanceNew.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -16,6 +17,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(
     {
         options.UseNpgsql(configuration.GetConnectionString(nameof(ApplicationDbContext)));
     });
+builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 var app = builder.Build();
 
