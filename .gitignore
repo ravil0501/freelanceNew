@@ -363,3 +363,4 @@ MigrationBackup/
 FodyWeavers.xsd
 /freelanceNew/appsettings.json
 /freelanceNew/appsettings.json
+/freelanceNew/appsettings.Development.json
