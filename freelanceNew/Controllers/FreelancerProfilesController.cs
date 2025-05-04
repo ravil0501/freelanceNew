@@ -3,11 +3,15 @@ using freelanceNew.DTOModels.FreelancersDto;
 using freelanceNew.Models;
 using Microsoft.EntityFrameworkCore;
 using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
+using System.ComponentModel.DataAnnotations;
+using freelanceNew.Models.Enums;
 
 namespace freelanceNew.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class FreelancerProfilesController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -18,22 +22,45 @@ namespace freelanceNew.Controllers
             _context = context;
             _mapper = mapper;
         }
-        // GET: api/freelancerprofiles
+
+        // GET: api/freelancerprofiles?minRate=50&maxRate=100&location=USA&skill=Programming
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<FreelancerProfileDto>>> GetFreelancerProfiles()
+        [AllowAnonymous]
+        public async Task<ActionResult<IEnumerable<FreelancerProfileDto>>> GetFreelancerProfiles(
+            [FromQuery] FreelancerFilterDto filter)
         {
-            var profiles = await _context.FreelancerProfiles
+            var query = _context.FreelancerProfiles
                 .Include(f => f.User)
                 .Include(f => f.FreelancerSkills)
                 .ThenInclude(fs => fs.Skill)
-                .ToListAsync();
+                .AsQueryable();
 
+            // Apply filters
+            if (filter.MinHourlyRate.HasValue)
+                query = query.Where(f => f.HourlyRate >= filter.MinHourlyRate);
+
+            if (filter.MaxHourlyRate.HasValue)
+                query = query.Where(f => f.HourlyRate <= filter.MaxHourlyRate);
+
+            if (!string.IsNullOrEmpty(filter.Location))
+                query = query.Where(f => f.Location.Contains(filter.Location));
+
+            if (!string.IsNullOrEmpty(filter.SearchQuery))
+                query = query.Where(f =>
+                    f.FullName.Contains(filter.SearchQuery) ||
+                    f.Bio.Contains(filter.SearchQuery));
+
+            if (filter.SkillIds != null && filter.SkillIds.Any())
+                query = query.Where(f => f.FreelancerSkills.Any(s => filter.SkillIds.Contains(s.SkillId)));
+
+            var profiles = await query.ToListAsync();
             return Ok(_mapper.Map<IEnumerable<FreelancerProfileDto>>(profiles));
         }
 
         // GET: api/freelancerprofiles/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<FreelancerProfileDto>> GetFreelancerProfile(Guid id)
+        [AllowAnonymous]
+        public async Task<ActionResult<FreelancerProfileDetailsDto>> GetFreelancerProfile(Guid id)
         {
             var profile = await _context.FreelancerProfiles
                 .Include(f => f.User)
@@ -43,33 +70,32 @@ namespace freelanceNew.Controllers
 
             if (profile == null) return NotFound();
 
-            return Ok(_mapper.Map<FreelancerProfileDto>(profile));
+            return Ok(_mapper.Map<FreelancerProfileDetailsDto>(profile));
         }
 
-
+        // POST: api/freelancerprofiles
         [HttpPost]
-        public async Task<ActionResult<FreelancerProfileDto>> CreateFreelancerProfile(
+        [Authorize(Roles = "Freelancer,Admin")]
+        public async Task<ActionResult<FreelancerProfileDetailsDto>> CreateFreelancerProfile(
             CreateFreelancerProfileDto dto)
         {
-            // Validate user exists
+            var currentUserId = GetCurrentUserId();
+
+            // Only allow creating profile for yourself unless admin
+            if (dto.UserId != currentUserId && !User.IsInRole("Admin"))
+                return Forbid();
+
             var user = await _context.Users.FindAsync(dto.UserId);
-            if (user == null) return BadRequest("User not found");
+            if (user == null || user.Role != UserRole.Freelancer)
+                return BadRequest("User must be a freelancer");
 
-            // Validate skills exist
-            var invalidSkills = dto.SkillIds.Except(
-                await _context.Skills.Where(s => dto.SkillIds.Contains(s.SkillId))
-                                    .Select(s => s.SkillId)
-                                    .ToListAsync());
-
+            var invalidSkills = await ValidateSkills(dto.SkillIds);
             if (invalidSkills.Any())
-            {
                 return BadRequest($"Invalid skill IDs: {string.Join(", ", invalidSkills)}");
-            }
 
             var profile = _mapper.Map<FreelancerProfile>(dto);
             profile.FreelancerId = dto.UserId;
 
-            // Add skills
             profile.FreelancerSkills = dto.SkillIds.Select(skillId => new FreelancerSkill
             {
                 FreelancerId = profile.FreelancerId,
@@ -82,64 +108,97 @@ namespace freelanceNew.Controllers
             return CreatedAtAction(
                 nameof(GetFreelancerProfile),
                 new { id = profile.FreelancerId },
-                await GetFullProfileDto(profile.FreelancerId));
+                _mapper.Map<FreelancerProfileDetailsDto>(profile));
         }
 
-        [HttpPut("{id}/skills")]
-        public async Task<IActionResult> UpdateFreelancerSkills(
+        // PUT: api/freelancerprofiles/{id}
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Freelancer,Admin")]
+        public async Task<IActionResult> UpdateFreelancerProfile(
             Guid id,
-            List<Guid> skillIds)
+            UpdateFreelancerProfileDto dto)
         {
+            var currentUserId = GetCurrentUserId();
             var profile = await _context.FreelancerProfiles
                 .Include(f => f.FreelancerSkills)
                 .FirstOrDefaultAsync(f => f.FreelancerId == id);
 
             if (profile == null) return NotFound();
 
-            // Validate skills
+            // Only allow updating your own profile unless admin
+            if (profile.FreelancerId != currentUserId && !User.IsInRole("Admin"))
+                return Forbid();
+
+            _mapper.Map(dto, profile);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        [HttpPut("{id}/skills")]
+        [Authorize(Roles = "Freelancer,Admin")]
+        public async Task<IActionResult> UpdateFreelancerSkills(
+            Guid id,
+            UpdateSkillsDto dto)
+        {
+            var currentUserId = GetCurrentUserId();
+            var profile = await _context.FreelancerProfiles
+                .Include(f => f.FreelancerSkills)
+                .FirstOrDefaultAsync(f => f.FreelancerId == id);
+
+            if (profile == null) return NotFound();
+
+            if (profile.FreelancerId != currentUserId && !User.IsInRole("Admin"))
+                return Forbid();
+
+            var invalidSkills = await ValidateSkills(dto.SkillIds);
+            if (invalidSkills.Any())
+                return BadRequest($"Invalid skill IDs: {string.Join(", ", invalidSkills)}");
+
+            profile.FreelancerSkills = dto.SkillIds.Select(skillId => new FreelancerSkill
+            {
+                FreelancerId = id,
+                SkillId = skillId
+            }).ToList();
+
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Freelancer,Admin")]
+        public async Task<IActionResult> DeleteFreelancerProfile(Guid id)
+        {
+            var currentUserId = GetCurrentUserId();
+            var profile = await _context.FreelancerProfiles.FindAsync(id);
+
+            if (profile == null) return NotFound();
+
+            if (profile.FreelancerId != currentUserId && !User.IsInRole("Admin"))
+                return Forbid();
+
+            _context.FreelancerProfiles.Remove(profile);
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        private async Task<List<Guid>> ValidateSkills(List<Guid> skillIds)
+        {
+            if (skillIds == null || !skillIds.Any()) return new List<Guid>();
+
             var existingSkills = await _context.Skills
                 .Where(s => skillIds.Contains(s.SkillId))
                 .Select(s => s.SkillId)
                 .ToListAsync();
 
-            var invalidSkills = skillIds.Except(existingSkills);
-            if (invalidSkills.Any())
-            {
-                return BadRequest($"Invalid skill IDs: {string.Join(", ", invalidSkills)}");
-            }
-
-            // Update skills
-            profile.FreelancerSkills = existingSkills
-                .Select(skillId => new FreelancerSkill
-                {
-                    FreelancerId = id,
-                    SkillId = skillId
-                }).ToList();
-
-            await _context.SaveChangesAsync();
-            return NoContent();
+            return skillIds.Except(existingSkills).ToList();
         }
 
-        private async Task<FreelancerProfileDto> GetFullProfileDto(Guid freelancerId)
+        private Guid GetCurrentUserId()
         {
-            var profile = await _context.FreelancerProfiles
-                .Include(f => f.User)
-                .Include(f => f.FreelancerSkills)
-                .ThenInclude(fs => fs.Skill)
-                .FirstOrDefaultAsync(f => f.FreelancerId == freelancerId);
-
-            return _mapper.Map<FreelancerProfileDto>(profile);
-        }
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteFreelancerProfile(Guid id)
-        {
-            var profile = await _context.FreelancerProfiles.FindAsync(id);
-            if (profile == null) return NotFound();
-
-            _context.FreelancerProfiles.Remove(profile);
-            await _context.SaveChangesAsync();
-            return NoContent();
+            var userIdClaim = User.FindFirst("sub") ??
+                throw new UnauthorizedAccessException("User ID claim not found");
+            return Guid.Parse(userIdClaim.Value);
         }
     }
 }

@@ -6,12 +6,14 @@ using AutoMapper;
 using freelanceNew.DTOModels.ClientsDto;
 using System.Linq.Dynamic.Core;
 using freelanceNew.Models.Enums;
+using Microsoft.AspNetCore.Authorization;
 
 namespace freelanceNew.Controllers
 {
     /// <summary>
     /// Контроллер для работы с профилями клиентов
     /// </summary>
+    [Authorize(Roles = "Admin,Client")]
     [ApiController]
     [Route("api/[controller]")]
     public class ClientProfilesController : ControllerBase
