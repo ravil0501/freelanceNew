@@ -3,6 +3,8 @@ using freelanceNew.DTOModels.ClientsDto;
 using freelanceNew.DTOModels.ContractsDto;
 using freelanceNew.DTOModels.FreelancersDto;
 using freelanceNew.DTOModels.JobsDto;
+using freelanceNew.DTOModels.ProposalsDto;
+using freelanceNew.DTOModels.ReviewsDto;
 using freelanceNew.DTOModels.UsersDTO;
 using freelanceNew.Models;
 
@@ -47,6 +49,21 @@ namespace freelanceNew
 
             CreateMap<FreelancerSkill, FreelancerSkillDto>()
                 .ForMember(dest => dest.SkillName, opt => opt.MapFrom(src => src.Skill.Name));
+
+            CreateMap<Proposal, ProposalDto>()
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()));
+
+            CreateMap<CreateProposalDto, Proposal>();
+
+            CreateMap<UpdateProposalDto, Proposal>()
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status));
+
+            CreateMap<Review, ReviewDto>()
+                .ForMember(dest => dest.ReviewerName, opt => opt.MapFrom(src => src.Reviewer.Username))
+                .ForMember(dest => dest.RevieweeName, opt => opt.MapFrom(src => src.Reviewee.Username));
+
+            CreateMap<CreateReviewDto, Review>();
+            CreateMap<UpdateReviewDto, Review>();
 
             // Добавь остальные маппинги по мере необходимости
         }

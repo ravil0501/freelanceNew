@@ -93,7 +93,7 @@ namespace freelanceNew.Controllers
                     TotalCount = totalCount,
                     Page = filter.Page,
                     PageSize = filter.PageSize
-                });
+                }); 
             }
             catch (Exception ex)
             {
