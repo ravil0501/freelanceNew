@@ -5,6 +5,7 @@ using freelanceNew.DTOModels.FreelancersDto;
 using freelanceNew.DTOModels.JobsDto;
 using freelanceNew.DTOModels.ProposalsDto;
 using freelanceNew.DTOModels.ReviewsDto;
+using freelanceNew.DTOModels.SkillsDto;
 using freelanceNew.DTOModels.UsersDTO;
 using freelanceNew.Models;
 
@@ -64,6 +65,10 @@ namespace freelanceNew
 
             CreateMap<CreateReviewDto, Review>();
             CreateMap<UpdateReviewDto, Review>();
+
+            CreateMap<Skill, SkillDto>();
+            CreateMap<CreateSkillDto, Skill>();
+            CreateMap<UpdateSkillDto, Skill>();
 
             // Добавь остальные маппинги по мере необходимости
         }

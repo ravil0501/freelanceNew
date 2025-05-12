@@ -29,4 +29,8 @@
     <PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="DTOModels\Новая папка\" />
+  </ItemGroup>
+
 </Project>
