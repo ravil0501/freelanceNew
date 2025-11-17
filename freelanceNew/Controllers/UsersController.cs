@@ -27,6 +27,7 @@ namespace freelanceNew.Controllers
         }
 
         // GET: api/Users?role=Admin&email=test@example.com
+        [AllowAnonymous]//dELETE
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers(
             [FromQuery] string role = null,

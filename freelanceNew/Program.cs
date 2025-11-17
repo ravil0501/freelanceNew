@@ -51,14 +51,33 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("FreelancerOnly", policy => policy.RequireRole("Freelancer"));
 });
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.WebHost.UseUrls("http://+:5000");
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:62502") // порт React
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 
 var app = builder.Build();
+
+app.UseCors("AllowReactApp");
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseDeveloperExceptionPage();
 }
 
 app.UseHttpsRedirection();
